@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  rclone-sync:
+    image: cassvail/rclone-sync
+    volumes:
+    - /srv/dev-disk-by-uuid-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/rclone_sync:/rclone_config
+    - /srv/dev-disk-by-uuid-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/mc-backup:/data
+    environment:
+      SYNC_DESTINATION: destination
+      SYNC_DESTINATION_PATH: Minecraft/mc-backups/
+      DELAY: 1h
