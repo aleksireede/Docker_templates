@@ -1,0 +1,57 @@
+version: "2"
+services:
+  app:
+    image: nextcloud
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`example.com`)"##replace this
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=myresolver"
+      - "traefik.http.routers.app.middlewares=nextcloud-dav"
+      - "traefik.http.middlewares.nextcloud-dav.replacepathregex.regex=^/.well-known/ca(l|rd)dav"
+      - "traefik.http.middlewares.nextcloud-dav.replacepathregex.replacement=/remote.php/dav/"
+      - "traefik.frontend.headers.STSPreload=true"
+      - "traefik.frontend.headers.STSSeconds=31536000"
+    restart: always
+    links:
+      - db
+    volumes:
+      - /srv/dev-disk-by-uuid-xxxx-xxxx-xxxxx/Nextcloud/data:/var/www/html ## replace this
+    environment:
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextclouduser
+      - MYSQL_PASSWORD=user_password ##replace
+      - MYSQL_HOST=db
+  db:
+    image: mariadb
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+      - /srv/dev-disk-by-uuid-xxxx-xxxx-xxxxx/Nextcloud/sqldata:/var/lib/mysql ##replace
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password ##replace
+      - MYSQL_PASSWORD=user_password ##replace
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextclouduser
+  traefik:
+    image: "traefik:v2.3.7"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=email@emailprovider.com" ##replace
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "443:443"
+      - "80:8080"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    restart: unless-stopped
