@@ -1,0 +1,55 @@
+version: '3.8'
+services:
+  web:
+    image: itzg/rcon
+    environment:
+      RWA_USERNAME: admin
+      RWA_PASSWORD: password
+      RWA_ADMIN: "TRUE"
+      # is referring to the hostname of 'mc' compose service below
+      RWA_RCON_HOST: mc
+      # needs to match the password configured for the container, which is 'minecraft' by default
+      RWA_RCON_PASSWORD: minecraft
+    ports:
+      - 4326:4326
+      - 4327:4327
+  mc:
+    image: itzg/minecraft-server
+
+    environment:
+      VANILLATWEAKS_SHARECODE: Li6Tt0,zS62vA,6t9EkK
+      REMOVE_OLD_VANILLATWEAKS: "TRUE"
+      EULA: "true"
+      MOTD: ""
+      ENABLE_RCON: "true"
+      OPS: username,uuid
+      RESOURCE_PACK: "resourcepack_url"
+      RESOURCE_PACK_SHA1: "sha1"
+      SPIGET_RESOURCES: 82342,103803,104388,87113,105587,106711,
+      TYPE: PAPER
+      VIEW_DISTANCE: 12
+      INIT_MEMORY: 1G
+      MAX_MEMORY: 2G
+      CONSOLE: "false"
+    ports:
+      - 25565:25565
+      - 25575:25575
+    volumes:
+      - /srv/dev-disk-by-uuid-xxxx-xxxxx-xxxx/Minecraft:/data
+    restart: unless-stopped
+  backups:
+    image: itzg/mc-backup
+    environment:
+      BACKUP_INTERVAL: "4h"
+      RCON_HOST: mc
+      PRE_BACKUP_SCRIPT: |
+        echo "Before backup!"
+        echo "Also before backup from $$RCON_HOST to $$DEST_DIR"
+      POST_BACKUP_SCRIPT_FILE: /post-backup.sh
+    volumes:
+      # mount the same volume used by server, but read-only
+      - /srv/dev-disk-by-uuid-xxxx-xxxxx-xxxx/Minecraft:/data:ro
+      # use a host attached directory so that it in turn can be backed up
+      # to external/cloud storage
+      - /srv/dev-disk-by-uuid-xxxx-xxxxx-xxxx/mc-backup:/backups
+      - ./post-backup.sh:/post-backup.sh:ro
